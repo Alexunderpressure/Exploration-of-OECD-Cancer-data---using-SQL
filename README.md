@@ -1,4 +1,4 @@
-# Exploration-of-OECD-Cancer-data---using-SQL
+# Exploration of OECD Cancer data using SQL
 
 The OECD cancer data provides a rich dataset for exploring and analyzing cancer death ratios across different countries and regions.
 By applying SQL techniques to this data, one can gain insights into trends and patterns in cancer deaths,
