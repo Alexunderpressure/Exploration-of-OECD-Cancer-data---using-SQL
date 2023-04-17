@@ -1,0 +1,116 @@
+USE HealthProject
+GO
+
+-- 1. Joining tables from other databases
+-- Exploration of dateset should begin with gathering all the data in one place.
+-- I didn't have any ID code, hence I created the code by combining 2 columns Country+Year.
+-- To achive that I'm using LEFT JOIN function, because I want underline that Cancer_table is a main point of analysis.
+
+SELECT [country_Canc],[year_canc],[death_ratio],[alc_consump], [consulatations], [healthcare_spending_USD_per_capita], [obese_ratio]
+FROM [dbo].[Deaths from cancer]
+LEFT JOIN [dbo].[Alkohol consumption] ON [CountryID_canc] = [ContryID_alc]
+LEFT JOIN [dbo].[Doctors' consultations] ON [CountryID_canc] = [CountryID_consult]
+LEFT JOIN [dbo].[Gov healthcare spending] ON [CountryID_canc] = [Country_ID_spending]
+LEFT JOIN [dbo].[Overweight or obese population] ON [CountryID_canc] = [CountryID_obese]
+
+-- 2. Initial data analysis
+-- Using simple functions like COUNT, WHERE, GROUP BY can help to understand the data more
+-- The result shows that data for each country is quite irregular, and it's worth to explore it deeper
+-- Perhaps it should be considered to drop columns that has too many NULLS
+
+SELECT [country_Canc], COUNT([country_Canc]) AS 'cancer ratio',COUNT([alc_consump]) AS 'alcohol', COUNT([consulatations]) AS 'consultation',
+COUNT([healthcare_spending_USD_per_capita]) AS 'spending', COUNT([obese_ratio]) AS 'obese ratio'
+FROM [dbo].[Deaths from cancer]
+LEFT JOIN [dbo].[Alkohol consumption] ON [CountryID_canc] = [ContryID_alc]
+LEFT JOIN [dbo].[Doctors' consultations] ON [CountryID_canc] = [CountryID_consult]
+LEFT JOIN [dbo].[Gov healthcare spending] ON [CountryID_canc] = [Country_ID_spending]
+LEFT JOIN [dbo].[Overweight or obese population] ON [CountryID_canc] = [CountryID_obese]
+WHERE [alc_consump] IS NULL OR [consulatations] IS NULL
+OR [healthcare_spending_USD_per_capita] IS NULL OR [obese_ratio] IS NULL
+GROUP BY [country_Canc]
+
+
+-- 3. Track how many values are empty
+-- Previously, We used COUNT to check how many records are in all of our table
+-- Here We can see how many countries have NULL values
+-- We could repeat this operation for every single column
+
+SELECT country_Canc, COUNT(country_Canc) AS 'blanks'
+FROM [dbo].[Deaths from cancer]
+LEFT JOIN [dbo].[Alkohol consumption] ON [CountryID_canc] = [ContryID_alc]
+LEFT JOIN [dbo].[Doctors' consultations] ON [CountryID_canc] = [CountryID_consult]
+LEFT JOIN [dbo].[Gov healthcare spending] ON [CountryID_canc] = [Country_ID_spending]
+LEFT JOIN [dbo].[Overweight or obese population] ON [CountryID_canc] = [CountryID_obese]
+WHERE [alc_consump] IS NULL
+GROUP BY country_Canc
+
+-- 4. Adding new records
+-- IF number of blanks is relatively small, We can easily add date manually
+-- In this case we add new record for Alcohol consumption in Germany in 2020
+
+INSERT INTO [dbo].[Alkohol consumption]([country_alc],[year_alc],[ContryID_alc],[alc_consump])
+VALUES ('Germany', '2020','Germany2020', 10);
+
+-- 5. Deleting invalid records
+-- During inserting a new data to our set, it is easy to make mistake
+-- Hopefully, the solution is simple, thanks to DELETE function we can drop any record we want
+
+DELETE FROM [dbo].[Alkohol consumption]
+WHERE [country_alc] = 'Germany' AND [year_alc] = '2020';
+
+-- 6. Filling the blanks with the mean
+-- After Inspecting significant lack of date, we can use the data analytic's technique which is:
+-- Replacing Blank values with an average by using function COALESCE
+-- We don't want to do that with an overall average, we want to have a specific average for every country
+-- To achieve that we need to use combination of OVER + PARTITTION BY
+
+
+SELECT 
+    [country_Canc], 
+    [year_canc], 
+	COALESCE([alc_consump], AVG([alc_consump]) OVER (PARTITION BY [country_Canc])),
+	COALESCE([consulatations], AVG([consulatations]) OVER(PARTITION BY [country_Canc])),
+	COALESCE([healthcare_spending_USD_per_capita], AVG([healthcare_spending_USD_per_capita]) OVER(PARTITION BY [country_Canc])),
+	COALESCE([obese_ratio], AVG([obese_ratio]) OVER (PARTITION BY [country_Canc]))
+FROM [dbo].[Deaths from cancer]
+LEFT JOIN [dbo].[Alkohol consumption] ON [CountryID_canc] = [ContryID_alc]
+LEFT JOIN [dbo].[Doctors' consultations] ON [CountryID_canc] = [CountryID_consult]
+LEFT JOIN [dbo].[Gov healthcare spending] ON [CountryID_canc] = [Country_ID_spending]
+LEFT JOIN [dbo].[Overweight or obese population] ON [CountryID_canc] = [CountryID_obese]
+WHERE
+[alc_consump] IS NOT NULL AND
+[consulatations] IS NOT NULL AND
+[healthcare_spending_USD_per_capita] IS NOT NULL AND
+[obese_ratio] IS NOT NULL
+
+-- 7. Final correction of data format and visualization
+-- After achieving right result, we should take care of visual site of our outcome
+-- By using CAST AS NUMERIC, we convert data to good-looking type
+-- + AS 'name' we can name every new created column
+
+
+SELECT 
+    [country_Canc], 
+    [year_canc], 
+    CAST(COALESCE([alc_consump], AVG([alc_consump]) OVER (PARTITION BY [country_Canc])) AS NUMERIC(10,2)) AS 'alc_consump',
+	CAST(COALESCE([consulatations], AVG([consulatations]) OVER(PARTITION BY [country_Canc])) AS NUMERIC(10,2)) AS 'consulatations',
+	CAST(COALESCE([healthcare_spending_USD_per_capita], AVG([healthcare_spending_USD_per_capita]) OVER(PARTITION BY [country_Canc])) AS NUMERIC(10,2)) AS 'healthcare_spending',
+	CAST(COALESCE([obese_ratio], AVG([obese_ratio]) OVER (PARTITION BY [country_Canc]))/100 AS NUMERIC(10,2)) AS 'obese_ratio'
+FROM [dbo].[Deaths from cancer]
+LEFT JOIN [dbo].[Alkohol consumption] ON [CountryID_canc] = [ContryID_alc]
+LEFT JOIN [dbo].[Doctors' consultations] ON [CountryID_canc] = [CountryID_consult]
+LEFT JOIN [dbo].[Gov healthcare spending] ON [CountryID_canc] = [Country_ID_spending]
+LEFT JOIN [dbo].[Overweight or obese population] ON [CountryID_canc] = [CountryID_obese]
+WHERE
+[alc_consump] IS NOT NULL AND
+[consulatations] IS NOT NULL AND
+[healthcare_spending_USD_per_capita] IS NOT NULL AND
+[obese_ratio] IS NOT NULL
+
+-- 8. Summary
+-- Our dataset now looks much better than before, after applying those steps
+-- We could take our new extracted data and merge it with input data
+-- What would be the next steps to improve our dataset?
+-- Certainly, there is still room for improvement
+-- For instance, we could download datasets from other sources,
+-- and fulfil empty values with real data by including it in our dataset
