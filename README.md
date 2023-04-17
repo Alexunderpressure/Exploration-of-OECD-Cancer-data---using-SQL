@@ -12,6 +12,16 @@ one can gain valuable experience in using SQL to extract insights from complex d
 Additionally, the process of cleaning and transforming data can serve as a foundation for more advanced analytical techniques,
 such as machine learning and predictive modeling, which can be applied to a wide range of real-world scenarios.
 
+All queries used to clean and improve data quality.
+1. Joining tables from other databases
+2. Initial data analysis
+3. Track how many values are empty
+4. Adding new records
+5. Deleting invalid records
+6. Filling the blanks with the mean
+7. Final correction of data format and visualization
+8. Summary
+
 DATA SOURCES:
 
 Alcohol consumption - annual sales of pure alcohol in litres per person aged 15 years and older.
